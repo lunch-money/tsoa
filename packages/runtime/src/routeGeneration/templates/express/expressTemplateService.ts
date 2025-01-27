@@ -27,6 +27,7 @@ type ExpressReturnHandlerParameters = {
   headers: any;
   statusCode?: number;
   data?: any;
+  cookies?: any;
 };
 
 export class ExpressTemplateService extends TemplateService<ExpressApiHandlerParameters, ExpressValidationArgsParameters, ExpressReturnHandlerParameters> {
@@ -37,12 +38,14 @@ export class ExpressTemplateService extends TemplateService<ExpressApiHandlerPar
       const data = await this.buildPromise(methodName, controller, validatedArgs);
       let statusCode = successStatus;
       let headers;
+      let cookies;
       if (this.isController(controller)) {
         headers = controller.getHeaders();
         statusCode = controller.getStatus() || statusCode;
+        cookies = controller.getCookies();
       }
 
-      this.returnHandler({ response, headers, statusCode, data });
+      this.returnHandler({ response, headers, statusCode, data, cookies });
     } catch (error) {
       return next(error);
     }
@@ -101,7 +104,7 @@ export class ExpressTemplateService extends TemplateService<ExpressApiHandlerPar
   }
 
   protected returnHandler(params: ExpressReturnHandlerParameters) {
-    const { response, statusCode, data } = params;
+    const { response, statusCode, data, cookies } = params;
     let { headers } = params;
     headers = headers || {};
 
@@ -110,6 +113,9 @@ export class ExpressTemplateService extends TemplateService<ExpressApiHandlerPar
     }
     Object.keys(headers).forEach((name: string) => {
       response.set(name, headers[name]);
+    });
+    cookies.forEach((cookieObj: { name: string, value: string, options?: any }) => {
+      response.cookie(cookieObj.name, cookieObj.value, cookieObj.options);
     });
 
     // Check if the response is marked to be JSON
